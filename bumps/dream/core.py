@@ -170,6 +170,7 @@ class Dream(object):
     """
     model = None
     # Sampling parameters
+    amt_Needed=100
     burn = 0
     draws = 100000
     thinning = 1
@@ -279,11 +280,23 @@ def run_dream(dream, abort_test=lambda: False):
     scale = 1.0
     #serial_time = parallel_time = 0.
     #last_time = time.time()
+    count=0
+    jamiefile = open("jamiefilerejected.txt", 'w')
+    jamiefile1= open("jamiefileaccepted.txt", 'w')
+    didCrossover = open("didCrossover.txt", 'w')
+    crossover=np.zeros((n_var*10, n_var+1))
     while state.draws < dream.draws + dream.burn:
+
+
+
+
 
         # Age the population using differential evolution
         dream.CR.reset(Nsteps=dream.DE_steps, Npop=n_chain)
         for gen in range(dream.DE_steps):
+
+            count = count + 1
+            if count > dream.amt_Needed: assert False
 
             # Define the current locations and associated posterior densities
             xold, logp_old = x, logp
@@ -291,12 +304,14 @@ def run_dream(dream, abort_test=lambda: False):
 
             # Generate candidates for each sequence
             xtry, step_alpha, used \
-                = de_step(n_chain, pop, dream.CR[gen],
+                = de_step(dream.amt_Needed, count, crossover, n_chain, pop, dream.CR[gen],
                           max_pairs=dream.DE_pairs,
                           eps=dream.DE_eps,
                           snooker_rate=dream.DE_snooker_rate,
                           noise=dream.DE_noise,
                           scale=scale)
+
+
 
             # PAK: Try a local optimizer every N generations
             if next_goalseek <= state.generation <= last_goalseek:
@@ -323,7 +338,16 @@ def run_dream(dream, abort_test=lambda: False):
             x, logp, alpha, accept \
                 = metropolis(xtry, logp_try,
                              xold, logp_old,
-                             step_alpha)
+                             step_alpha, jamiefile, jamiefile1, crossover, count, dream.amt_Needed)
+
+            if count>dream.amt_Needed-4:
+                for i in range(n_var*10):
+                    for j in range(n_var+1):
+                        didCrossover.write(str(crossover[i][j])+" ")
+                    didCrossover.write("\n")
+                crossover=np.zeros((n_var*10, n_var+1))
+                didCrossover.write("\n\n\n\n\n\n\n\n\n")
+
 
             # Process delayed rejection
             # PAK NOTE: this updates according to the covariance matrix of the
@@ -381,7 +405,7 @@ def run_dream(dream, abort_test=lambda: False):
 
         #if state.draws <= 0.1 * dream.draws:
         if state.draws <= dream.burn:
-            # Adapt the crossover ratio, but only during burn-in.
+            # Adapt the didCrossover ratio, but only during burn-in.
             dream.CR.adapt()
         # See whether there are any outlier chains, and remove
         # them to current best value of X

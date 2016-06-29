@@ -10,6 +10,8 @@ from numpy.linalg import norm, cholesky, inv
 from . import util
 
 
+
+
 def paccept(logp_old, logp_try):
     """
     Returns the probability of taking a metropolis step given two
@@ -18,7 +20,7 @@ def paccept(logp_old, logp_try):
     return exp(minimum(logp_try-logp_old, 0))
 
 
-def metropolis(xtry, logp_try, xold, logp_old, step_alpha):
+def metropolis(xtry, logp_try, xold, logp_old, step_alpha, jamiefile, jamiefile1, crossover, amt, amt_Needed):
     """
     Metropolis rule for acceptance or rejection
 
@@ -39,9 +41,62 @@ def metropolis(xtry, logp_try, xold, logp_old, step_alpha):
     ## The following only works for vectors:
     # xnew = where(accept, xtry, xold)
     xnew = xtry+0
+    count=0
+    count1=0
+    std_dev_count=0
+    std_dev=[]
+    for i in range(len(xold[0])):
+        for j in range (len(xold[0]*10)):
+            std_dev_count+=xold[j][j]**2
+        std_dev.append((std_dev_count/(len(xold[0]*10)-1))**.5)
+
+
     for i, a in enumerate(accept):
+        if amt>amt_Needed-4:
+            if a:
+
+                count1=count1 +1
+                xdiff_accept=[]
+                for j in range(len(xnew[0])):
+                    xdiff_accept.append(abs((xtry[i][j] - xold[i][j]) / std_dev[j]))
+
+
+                for j in range(len(xdiff_accept)):
+                    jamiefile1.write(str(xdiff_accept[j]) + ",\t")
+                jamiefile1.write("\n")
+
+
+
         if not a:
+
             xnew[i] = xold[i]
+            if amt>amt_Needed-4:
+                count = count + 1
+                xdiff_reject=[]
+
+                for j in range(len(crossover[0])):
+                    crossover[i][j]*=2
+                for j in range(len(xnew[0])):
+                    if xold[i][j]!=0: xdiff_reject.append(abs((xtry[i][j]-xold[i][j])/std_dev[j]))
+                    else: xdiff_reject.append(0)
+
+
+                for j in range(len(xdiff_reject)):
+                    jamiefile.write(str(xdiff_reject[j])+",\t")
+
+
+
+                #jamiefile.write(str(xold[i])+"\n"+str(xtry[i]))
+                jamiefile.write("\n")
+
+    if amt>amt_Needed-4:
+        jamiefile.write("\n")
+        jamiefile1.write("\n")
+        jamiefile.write(str(count))
+        jamiefile1.write(str(count1))
+        jamiefile1.write("\n\n\n")
+        jamiefile.write("\n\n\n")
+        #assert False
 
     return xnew, logp_new, alpha, accept
 

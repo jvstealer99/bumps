@@ -10,11 +10,12 @@ from numpy import where, select
 from numpy.linalg import norm, cholesky, LinAlgError
 from .util import draw, rng
 
+
 EPS = 1e-6
 _SNOOKER, _DE, _DIRECT = 0, 1, 2
 
 
-def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
+def de_step(amt_Needed, amt, crossover, Nchain, pop, CR, max_pairs=2, eps=0.05,
             snooker_rate=0.1, noise=1e-6, scale=1.0):
     """
     Generates offspring using METROPOLIS HASTINGS monte-carlo markov chain
@@ -55,8 +56,20 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
             # Select the dims to update based on the crossover ratio, making
             # sure at least one dim is selected
             vars = where(rng.rand(Nvar) > CR[qq])[0]
+
             if len(vars) == 0:
                 vars = [rng.randint(Nvar)]
+
+            if amt>amt_Needed-4:
+                for i in range(len(vars)):
+                    crossover[qq][vars[i]]=1
+
+
+
+
+
+
+
 
             # Weight the size of the jump inversely proportional to the
             # number of contributions, both from the parameters being
@@ -131,6 +144,16 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
 
     # absolute noise
     #x_new = pop[:Nchain] + delta_x + scale*noise*rng.randn(Nchain, Nvar)
+
+    for i in range((len(crossover[0])-1)*10):
+        for j in range(len(crossover[0])-1):
+            if (delta_x[i][j]==0): crossover[i][j]=0
+            else: crossover[i][j]=1
+    for i in range(len(crossover)):
+        if(alg[i]== _DE): crossover[i,len(crossover[0])-1]=7
+        elif (alg[i] == _SNOOKER): crossover[i, len(crossover[0]) - 1] = 8
+        elif (alg[i] == _DIRECT): crossover[i, len(crossover[0]) - 1] = 9
+
 
     # relative noise
     x_new = pop[:Nchain] * (1 + scale*noise*rng.randn(Nchain, Nvar)) + delta_x
